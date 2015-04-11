@@ -45,3 +45,6 @@ Temporary Items
 #Directories created to ignore
 /.metadata/
 /RemoteSystemsTempFiles/
+
+#ignore compilation files
+*.o
