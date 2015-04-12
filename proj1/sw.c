@@ -42,23 +42,23 @@
  		char line[50];
  		//-----------------CREATE FILE AND STORE DATA IN IT--------------------------------
  		//-----CREATE FILE------
- 		char * lastSlash = strchr(pathToFile, '/');
+ 		char * lastSlash = strrchr(pathToFile, '/');
  		if (lastSlash == NULL)
  			lastSlash = pathToFile;
  		int numberOfLastSlash = lastSlash - pathToFile;
- 		char newFileName[200];
- 		
- 		strncpy(newFileName, pathToFile + numberOfLastSlash, strlen(pathToFile) - (numberOfLastSlash + 4));	//4 simboliza o numero de caracteres em: .txt
  		char nameOfOutput[200];
- 		strncpy(nameOfOutput, pathToFile + numberOfLastSlash, strlen(pathToFile) - (numberOfLastSlash + 4));	//4 simboliza o numero de caracteres em: .txt
- 		strcat(nameOfOutput, "_temp.txt");
+ 		strncpy(nameOfOutput, lastSlash + 1, strlen(pathToFile) - numberOfLastSlash - 5);	//4 simboliza o numero de caracteres em: .txt
+ 		char nameToPrint[200];
+ 		strncpy(nameToPrint, lastSlash + 1, strlen(pathToFile) - numberOfLastSlash - 5);
+ 		strcat(nameToPrint, "_temp.txt");
+ 		
+ 		FILE * outFile = NULL;
 
- 		FILE * outFile;
+ 		printf("%s\n", nameOfOutput);
 
- 		outFile = fopen(nameOfOutput, "w");
+ 		outFile = fopen(nameToPrint, "w");
  		 if (outFile == NULL)
   		{
-   			 fputs ("fopen error", outFile);
     		fclose (outFile);
   		}
  		//----------------------
@@ -69,17 +69,15 @@
  			char destination[200];										//char * com a informacao da palavra
  			int number;												//int com a posicao na string
  			lineNumber = strchr(line, ':');							//le ate aos 2 pontos
- 			if (lineNumber == NULL)
- 				lineNumber = line;
  			number = lineNumber - line;
- 			strncpy(destination, lineNumber + 1, strlen(line));	//copia o nome da palavra
+ 			strncpy(destination, line + number + 1, strlen(line) - number);	//copia o nome da palavra
  			destination[strlen(destination) - 1] = '\0';
 
  			//introduz os 2 pontos
  			strcat(destination, " : ");								
  			
  			//introduz o nome do novo ficheiro
- 			strcat(destination, newFileName);
+ 			strcat(destination, nameOfOutput);
 
  			//introduz o hifen
  			strcat(destination, "-");
@@ -90,6 +88,9 @@
  			strcat(destination, num);
 
  			strcat(destination, "\n");
+
+ 			printf("%s\n", destination);
+
  			fputs(destination, outFile);
  		}
 		//----------------------------------------------------------------------------------
