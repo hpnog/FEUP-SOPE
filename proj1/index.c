@@ -2,6 +2,7 @@
 #include <stdlib.h> 
 #include <stdio.h>
 #include <string.h>
+#include <sys/wait.h>
 
 #define CORRECT_EXIT 0
 #define ERROR_EXIT 1
@@ -9,6 +10,7 @@
 
 int main(int argc, char * argv[])
 {
+	int stat;
 	char * pathToDir = argv[1];								//Como argumento recebe o caminho para o diretório
 	
 	//------------------------CRIA CAMINHO PARA WORDS E VERIFICA SE ESTA CORRETO----------------
@@ -40,15 +42,18 @@ int main(int argc, char * argv[])
 		else if (pid > 0)
 		{
 			counterOfFiles++;
-			wait(pid);
+			wait(&stat);
 		}
 		else
 		{
 			fprintf(stderr, "\nError in Fork in index\n");
- 			exit(ERROR_EXIT);
+			exit(ERROR_EXIT);
 		}
 
 		
 	} while (TRUE);
+
+	execlp("./csc_exec", "./csc_exec", pathToDir, NULL);
+
 	exit(CORRECT_EXIT);
 }

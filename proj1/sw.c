@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/wait.h>
 
 #define CORRECT_EXIT 0
 #define ERROR_EXIT 1
@@ -17,7 +18,7 @@
 
  int main(int argc, char *argv[])
  {
-
+ 	int stat;
  	char *pathToFile = argv[2];
  	char *pathToWords = argv[1];
 
@@ -45,7 +46,7 @@
  	}
  	else
  	{
- 		wait(pid);
+		wait(&stat);
  		close(swPipe[WRITING_PIPE]);		
  		readStream = fdopen(swPipe[READING_PIPE], "r");
  		char line[MAX_SIZE_OF_LINE];
