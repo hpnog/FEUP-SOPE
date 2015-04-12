@@ -1,5 +1,0 @@
-grep <palavra> <ficheiro> -n (numero da linha) -o (retornar so palavra) -w (palavra isolada)
-------------------------------------------Procura a palavra no ficheiro---------------------
-
-grep -n -w -o -f <ficheiro> <ficheiro>
-------------------------------------Procura palavras em comum-------------------------------
