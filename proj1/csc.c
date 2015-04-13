@@ -30,8 +30,6 @@ int main(int argc, char * argv[])
 	strncpy(pathToIndex, pathToDir, strlen(pathToDir));
 	strcat(pathToIndex, "/index.txt");
 
-	printf("\nPath to index: %s\n", pathToIndex);
-
 	//------------------PUTS CONTENT ON PIPE AND REMOVES FILE---------------------------
 	char nameOfFile[20] = "";
 	int fileCounter = 1;
@@ -112,21 +110,22 @@ int main(int argc, char * argv[])
 	//----------------------------------------------------------------------------------
 	//---------------------------WRITES EVERYTHING ON FILE------------------------------
 
-	printf("\n\n%s\n%s\n\n", pathToIndexTemp, pathToIndex);
-
 	readStream = NULL;
 	outFile = NULL;
 
 	readStream = fopen(pathToIndexTemp, "r");
 	outFile = fopen(pathToIndex, "w");
-		
+
 	if (outFile == NULL)
 		fclose (outFile);
 
 	if (readStream == NULL)
 		fclose(readStream);
 
-	char * word = malloc(MAX_SIZE_OF_LINE * sizeof(char));
+	char title[] = "INDEX";
+	fputs(title, outFile);
+
+	char * word = malloc((1 + MAX_SIZE_OF_LINE) * sizeof(char));
 	while (fgets(line, MAX_SIZE_OF_LINE, readStream) != NULL)
 	{
 		int i;
@@ -137,31 +136,42 @@ int main(int argc, char * argv[])
 
 		if (strncmp(word, wordTemp, strlen(wordTemp)) != 0)
 		{
-			strcat(word, "\n");
+			strcat(word, "\n\n");
 			fputs(word, outFile);
-			word = malloc(MAX_SIZE_OF_LINE * sizeof(char));
-			strncpy(word, wordTemp, strlen(wordTemp));
-			strcat(word, " : ");
+			word = malloc((1 + MAX_SIZE_OF_LINE) * sizeof(char));
+			strncpy(word, wordTemp, strlen(wordTemp) + 1);
+			strcat(word, ": ");
 			char a[10] = "";
-			strncpy(a, line + strlen(wordTemp) + 3, strlen(line) - 3 - strlen(wordTemp));
+			strncpy(a, line + strlen(wordTemp) + 3, strlen(line) - 4 - strlen(wordTemp));
 			strcat(word, a);
 		}
 		else
 		{
 			char a[10] = "";
-			strncpy(a, line + strlen(wordTemp) + 3, strlen(line) - 3 - strlen(wordTemp));
-			strcat(word, " , ");
+			strncpy(a, line + strlen(wordTemp) + 3, strlen(line) - 4 - strlen(wordTemp));
+			strcat(word, ", ");
 			strcat(word, a);
 		}
 	}
+	strcat(word, "\n");
 	fputs(word, outFile);
 
 	fclose(outFile);
 	fclose(readStream);
 	
+	//------------REMOVES FILE----------------------
+	pid_t pid3 = fork();
+	if (pid3 == 0)
+		execlp("rm", "rm", pathToIndexTemp, NULL);
+	else if (pid3 < 0)
+	{
+		fprintf(stderr, "\nError in Fork in csc\n");
+		exit(ERROR_EXIT);
+	}
+	else
+		wait(&stat);
+		//----------------------------------------------
 	//----------------------------------------------------------------------------------
-
-	printf("\nCSC called\n%s\n", pathToIndex);
 
 	exit(CORRECT_EXIT);
 }

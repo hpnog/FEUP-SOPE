@@ -18,8 +18,6 @@ int main(int argc, char * argv[])
 	strncpy(pathToWords, pathToDir, strlen(pathToDir));
 	strcat(pathToWords, "/words.txt");						//Adiciona ao caminho de dir - /words.txt
 
-	printf("\n%s\n", pathToWords);
-
 	if (access(pathToWords, F_OK) != 0)						//Verifica se words.txt existe
 		exit(ERROR_EXIT);									//Se nao existir terimna e retorna 1
 	
