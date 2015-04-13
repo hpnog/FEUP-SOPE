@@ -113,21 +113,54 @@ int main(int argc, char * argv[])
 
 	printf("\n\n%s\n%s\n\n", pathToIndexTemp, pathToIndex);
 
-	FILE* finalInFile = NULL;//fopen(pathToIndexTemp, "r");
-	FILE* finalOutFile = NULL;//fopen(pathToIndex, "w");
-		/*
-	if (finalOutFile == NULL)
-		fclose (finalOutFile);
+	readStream = NULL;
+	outFile = NULL;
 
-	if (finalInFile == NULL)
-		fclose(finalInFile);
+	readStream = fopen(pathToIndexTemp, "r");
+	outFile = fopen(pathToIndex, "w");
+		
+	if (outFile == NULL)
+		fclose (outFile);
 
-	fclose(finalOutFile);
-	fclose(finalInFile);*/
+	if (readStream == NULL)
+		fclose(readStream);
+
+	char word[1000] = "";
+	while (fgets(line, MAX_SIZE_OF_LINE, readStream) != NULL)
+	{
+		int i;
+		char wordTemp[MAX_SIZE_OF_LINE] = "";
+		for (i = 0; line[i] != ' ' && i < (MAX_SIZE_OF_LINE - 1); i++)
+			wordTemp[i] = line[i];
+		wordTemp[i+1] = '\0';
+
+		if (strncmp(word, wordTemp, strlen(wordTemp)) != 0)
+		{
+			strcat(word, "\n");
+			fputs(word, outFile);
+			word[0] = '\0';
+			strncpy(word, wordTemp, strlen(wordTemp));
+			strcat(word, " : ");
+			char a[10] = "";
+			strncpy(a, line + strlen(wordTemp) + 3, strlen(line) - 3 - strlen(wordTemp));
+			strcat(word, a);
+		}
+		else
+		{
+			char a[10] = "";
+			strncpy(a, line + strlen(wordTemp) + 3, strlen(line) - 3 - strlen(wordTemp));
+			strcat(word, " , ");
+			strcat(word, a);
+		}
+	}
+	fputs(word, outFile);
+
+	fclose(outFile);
+	fclose(readStream);
 	
 	//----------------------------------------------------------------------------------
 
-	//printf("\nCSC called\n%s\n", pathToIndex);
+	printf("\nCSC called\n%s\n", pathToIndex);
 
 	exit(CORRECT_EXIT);
 }
