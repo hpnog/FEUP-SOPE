@@ -14,12 +14,16 @@ int main(int argc, char * argv[])
 	char * pathToDir = argv[1];								//Como argumento recebe o caminho para o diretório
 	
 	//------------------------CRIA CAMINHO PARA WORDS E VERIFICA SE ESTA CORRETO----------------
-	char pathToWords[strlen(pathToDir) + 10];				//Cria char[] para o caminho para words.txt
+	char * pathToWords = malloc(strlen(pathToDir) * sizeof(char));				//Cria char[] para o caminho para words.txt
 	strncpy(pathToWords, pathToDir, strlen(pathToDir));
 	strcat(pathToWords, "/words.txt");						//Adiciona ao caminho de dir - /words.txt
 
+	printf("\n%s\n", pathToWords);
+
 	if (access(pathToWords, F_OK) != 0)						//Verifica se words.txt existe
 		exit(ERROR_EXIT);									//Se nao existir terimna e retorna 1
+	
+
 	//-------------------------------------------------------------------------------------------
 	int counterOfFiles = 1;
 	do

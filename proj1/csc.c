@@ -26,14 +26,15 @@ int main(int argc, char * argv[])
 	}
 
 	char * pathToDir = argv[1];
-	char pathToIndex[strlen(pathToDir) + strlen("/index.txt")];
+	char * pathToIndex = malloc(strlen(pathToDir) * sizeof(char));
 	strncpy(pathToIndex, pathToDir, strlen(pathToDir));
 	strcat(pathToIndex, "/index.txt");
+
+	printf("\nPath to index: %s\n", pathToIndex);
 
 	//------------------PUTS CONTENT ON PIPE AND REMOVES FILE---------------------------
 	char nameOfFile[20] = "";
 	int fileCounter = 1;
-
 	while (TRUE)
 	{
 		sprintf(nameOfFile, "%d", fileCounter);
