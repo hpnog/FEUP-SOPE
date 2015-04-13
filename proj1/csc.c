@@ -126,7 +126,7 @@ int main(int argc, char * argv[])
 	if (readStream == NULL)
 		fclose(readStream);
 
-	char word[1000] = "";
+	char * word = malloc(MAX_SIZE_OF_LINE * sizeof(char));
 	while (fgets(line, MAX_SIZE_OF_LINE, readStream) != NULL)
 	{
 		int i;
@@ -139,7 +139,7 @@ int main(int argc, char * argv[])
 		{
 			strcat(word, "\n");
 			fputs(word, outFile);
-			word[0] = '\0';
+			word = malloc(MAX_SIZE_OF_LINE * sizeof(char));
 			strncpy(word, wordTemp, strlen(wordTemp));
 			strcat(word, " : ");
 			char a[10] = "";
