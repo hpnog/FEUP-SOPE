@@ -133,7 +133,7 @@ int main(int argc, char * argv[])
 		char wordTemp[MAX_SIZE_OF_LINE] = "";
 		for (i = 0; line[i] != ' ' && i < (MAX_SIZE_OF_LINE - 1); i++)
 			wordTemp[i] = line[i];
-		wordTemp[i+1] = '\0';
+		wordTemp[i] = '\0';
 
 		if (strncmp(word, wordTemp, strlen(wordTemp)) != 0)
 		{
