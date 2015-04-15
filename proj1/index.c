@@ -12,7 +12,10 @@ int main(int argc, char * argv[])
 {
 	int stat;
 	char * pathToDir = malloc((strlen(argv[1]) + 1) * sizeof(char));								//Como argumento recebe o caminho para o diretório
-	strncpy(pathToDir, argv[1], strlen(argv[1]) + 1);
+	if (argv[1][strlen(pathToDir) - 1] == '/')
+		strncpy(pathToDir, argv[1], strlen(argv[1]) - 1);
+	else
+		strncpy(pathToDir, argv[1], strlen(argv[1]));
 
 	//------------------------CRIA CAMINHO PARA WORDS E VERIFICA SE ESTA CORRETO----------------
 	char * pathToWords = malloc((strlen(pathToDir) + 11) * sizeof(char));				//Cria char[] para o caminho para words.txt
@@ -40,7 +43,7 @@ int main(int argc, char * argv[])
 
 		pid_t pid = fork();
 		if (pid == 0)
-			execlp("./sw_exec", "./sw_exec", pathToWords, pathToFile, NULL);
+			execlp("./sw", "./sw", pathToWords, pathToFile, NULL);
 		else if (pid > 0)
 		{
 			counterOfFiles++;
@@ -55,7 +58,7 @@ int main(int argc, char * argv[])
 		
 	} while (TRUE);
 
-	execlp("./csc_exec", "./csc_exec", pathToDir, NULL);
+	execlp("./csc", "./csc", pathToDir, NULL);
 
 	exit(CORRECT_EXIT);
 }
