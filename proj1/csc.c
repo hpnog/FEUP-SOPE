@@ -26,8 +26,8 @@ int main(int argc, char * argv[])
 	}
 
 	char * pathToDir = argv[1];
-	char * pathToIndex = malloc(strlen(pathToDir) * sizeof(char));
-	strncpy(pathToIndex, pathToDir, strlen(pathToDir));
+	char * pathToIndex = malloc((strlen(pathToDir) + 11) * sizeof(char));
+	strncpy(pathToIndex, pathToDir, strlen(pathToDir) + 1);
 	strcat(pathToIndex, "/index.txt");
 
 	//------------------PUTS CONTENT ON PIPE AND REMOVES FILE---------------------------
@@ -138,7 +138,7 @@ int main(int argc, char * argv[])
 		{
 			strcat(word, "\n\n");
 			fputs(word, outFile);
-			word = malloc((1 + MAX_SIZE_OF_LINE) * sizeof(char));
+			word = malloc((10 + MAX_SIZE_OF_LINE) * sizeof(char));
 			strncpy(word, wordTemp, strlen(wordTemp) + 1);
 			strcat(word, ": ");
 			char a[10] = "";

@@ -19,8 +19,10 @@
  int main(int argc, char *argv[])
  {
  	int stat;
- 	char *pathToFile = argv[2];
- 	char *pathToWords = argv[1];
+ 	char *pathToFile = malloc((strlen(argv[2]) + 1) * sizeof(char));
+ 	char *pathToWords = malloc((strlen(argv[1]) + 1) * sizeof(char));
+ 	strncpy(pathToFile, argv[2], strlen(argv[2]) + 1);
+ 	strncpy(pathToWords, argv[1], strlen(argv[1]) + 1);
 
  	int swPipe[2];
  	FILE *readStream;
