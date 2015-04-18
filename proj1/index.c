@@ -43,7 +43,7 @@ int main(int argc, char * argv[])
 
 		pid_t pid = fork();
 		if (pid == 0)
-			execlp("./sw", "./sw", pathToWords, pathToFile, NULL);
+			execlp("./bin/sw", "./bin/sw", pathToWords, pathToFile, NULL);
 		else if (pid > 0)
 		{
 			counterOfFiles++;
@@ -58,7 +58,7 @@ int main(int argc, char * argv[])
 		
 	} while (TRUE);
 
-	execlp("./csc", "./csc", pathToDir, NULL);
+	execlp("./bin/csc", "./bin/csc", pathToDir, NULL);
 
 	exit(CORRECT_EXIT);
 }
