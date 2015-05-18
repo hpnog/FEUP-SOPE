@@ -42,12 +42,12 @@ typedef struct
 
 //----------------------------------------LER DO FIFO---------------------------------------------
 int readline(int fd, char *str) 
- { 
-     int n; 
-     do { 
-       n = read(fd,str,1); 
-   } while (n>0 && *str++ != '\0'); 
-   return (n>0); 
+{ 
+	int n; 
+	do { 
+		n = read(fd,str,1); 
+	} while (n>0 && *str++ != '\0'); 
+	return (n>0); 
 } 
 //----------------------------------------------------------------------------------------------------
 
@@ -99,6 +99,21 @@ SharedMem * createSharedMemory(char* shm_name,int shm_size)
 //---------------------------------DESTROI A MEMORIA PARTILHADA-------------------------------------
 void destroySharedMemory(SharedMem *shm, int shm_size, char * shm_name)
 {
+	printf("\n\nTabela:\n\n");
+	printf("N_B\tT\tDUR\tFIFO\tEM_AT\tJA_AT\tTMED\n");
+	int i = 0;
+	while (i < shm->numeroDeBalcoes)
+	{
+		printf("%d\t%d\t%d\t%d\t%d\t%d\t%d\n", 
+			shm->table[N_BALCAO][i],
+			shm->table[N_TEMPO][i],
+			shm->table[N_DURACAO][i],
+			shm->table[N_FIFO][i],
+			shm->table[N_EM_ATENDIMENTO][i],
+			shm->table[N_JA_ATENDIDOS][i],
+			shm->table[TEMPO_MEDIO_ATENDIMENTO][i]);
+		i++;
+	}
 
 	if (munmap(shm,shm_size) < 0)
 	{
@@ -137,7 +152,25 @@ void *thr_balcao(void *arg)
 	printf("%s", ctime(&shm->openingTime));
 	printf("\nNumero de balcoes: %d\n", shm->numeroDeBalcoes);
 
-	getc(stdin);		//SUBSTITUIR POR FOR()/WHILE()
+	shm->table[N_BALCAO][shm->numeroDeBalcoes-1] = shm->numeroDeBalcoes;
+	shm->table[N_TEMPO][shm->numeroDeBalcoes-1] = time(NULL) - shm->openingTime;
+	shm->table[N_DURACAO][shm->numeroDeBalcoes-1] = -1;					//a alterar quando o balcao fecha
+	shm->table[N_FIFO][shm->numeroDeBalcoes-1] = getpid();
+	shm->table[N_EM_ATENDIMENTO][shm->numeroDeBalcoes-1] = 0;			//a alterar sempre que um cliente envia info
+	shm->table[N_JA_ATENDIDOS][shm->numeroDeBalcoes-1] = 0;				//a alterar sempre que um cliente termina o seu atendimento
+	shm->table[TEMPO_MEDIO_ATENDIMENTO][shm->numeroDeBalcoes-1] = 0;	//a alterar semrpe que um cliente termina o seu atendimento
+	int nBalcao = shm->numeroDeBalcoes-1;
+
+	while (time(NULL) - args->openingTime > 0)		//PRECISA DE NAO BLOQUEAR AQUI NO READ()
+	{
+		char str[100];
+		readline(fd, str);
+		if (strlen(str) > 0)
+			printf("%s", str);
+	}
+
+	shm->table[N_DURACAO][nBalcao] = args->openingTime;
+	printf("\nBalcao esteve aberto %d tempo\n", args->openingTime);
 
 	if (shm->numeroDeBalcoesExecucao == 1)
 		destroySharedMemory(shm, sizeof(SharedMem), args->nameOfMem);
