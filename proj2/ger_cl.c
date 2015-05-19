@@ -133,7 +133,7 @@ int main(int argc, char *argv[])
 			int fd_b = open(fifoB, O_WRONLY);
 
 			char message[100];
-			sprintf(message,"\nProcesso terminado hue hue\n"); 
+			sprintf(message,"\nProcesso terminado hue hue %d\n", i+1); 
 			int messagelen=strlen(message)+1; 
 			write(fd_b,message,messagelen); 
 			printf("\nFifos criados e mensagem enviada!\n");
@@ -143,6 +143,7 @@ int main(int argc, char *argv[])
 			return 0;
 		}
 		i++;
+		//sleep(1);	//tempor
 	}
 	i = 0;
 	while (i < nClients)

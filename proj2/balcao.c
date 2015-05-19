@@ -45,8 +45,11 @@ int readline(int fd, char *str)
 { 
 	int n; 
 	do { 
+		printf("\nAntes do read");
 		n = read(fd,str,1); 
-	} while (n>0 && *str++ != '\0'); 
+		printf("\nDepois do read");
+	} while (n>0 && *str++ != '\0');
+	printf("\nTerminou o readline"); 
 	return (n>0); 
 } 
 //----------------------------------------------------------------------------------------------------
@@ -153,7 +156,8 @@ void *thr_balcao(void *arg)
 	printf("\nNumero de balcoes: %d\n", shm->numeroDeBalcoes);
 
 	shm->table[N_BALCAO][shm->numeroDeBalcoes-1] = shm->numeroDeBalcoes;
-	shm->table[N_TEMPO][shm->numeroDeBalcoes-1] = time(NULL) - shm->openingTime;
+	shm->table[N_TEMPO][shm->numeroDeBalcoes-1] = time(NULL) - time(&shm->openingTime);
+	printf("\nTempo: %d", shm->table[N_TEMPO][shm->numeroDeBalcoes-1]);
 	shm->table[N_DURACAO][shm->numeroDeBalcoes-1] = -1;					//a alterar quando o balcao fecha
 	shm->table[N_FIFO][shm->numeroDeBalcoes-1] = getpid();
 	shm->table[N_EM_ATENDIMENTO][shm->numeroDeBalcoes-1] = 0;			//a alterar sempre que um cliente envia info
@@ -161,16 +165,26 @@ void *thr_balcao(void *arg)
 	shm->table[TEMPO_MEDIO_ATENDIMENTO][shm->numeroDeBalcoes-1] = 0;	//a alterar semrpe que um cliente termina o seu atendimento
 	int nBalcao = shm->numeroDeBalcoes-1;
 
-	while (time(NULL) - args->openingTime > 0)		//PRECISA DE NAO BLOQUEAR AQUI NO READ()
+	int startAssisting = time(NULL); 
+	int elapsedTime = time(NULL) - startAssisting;
+	printf("\nSegundos passados: %d",elapsedTime);
+	while (elapsedTime < args->openingTime)		
 	{
-		char str[100];
+		printf("\nSegundos restantes: %d",elapsedTime);
+		char str[100] = "";
 		readline(fd, str);
 		if (strlen(str) > 0)
-			printf("%s", str);
+		{
+			printf("%s", str);		//Nao é só para imprimir
+			getc(stdin);
+		}
+		elapsedTime = time(NULL) - startAssisting;
 	}
 
 	shm->table[N_DURACAO][nBalcao] = args->openingTime;
+
 	printf("\nBalcao esteve aberto %d tempo\n", args->openingTime);
+	printf("\nNumero de balcoes em execucao: %d", shm->numeroDeBalcoesExecucao);
 
 	if (shm->numeroDeBalcoesExecucao == 1)
 		destroySharedMemory(shm, sizeof(SharedMem), args->nameOfMem);
