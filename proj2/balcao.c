@@ -40,6 +40,14 @@ typedef struct
 	char * nameOfMem;
 } args_struct;
 
+typedef struct
+{
+	SharedMem *shm;
+	char * pathToFifo;
+	int nBalcao;
+
+} args2_struct;
+
 //----------------------------------------LER DO FIFO---------------------------------------------
 int readline(int fd, char *str) 
 { 
@@ -128,6 +136,40 @@ void destroySharedMemory(SharedMem *shm, int shm_size, char * shm_name)
 	}
 } 
 //--------------------------------------------------------------------------------------------------
+void *thr_atendimento(void *arg)
+{
+	args2_struct *args = (args2_struct*) arg;
+
+	int fifo_cl_int = -1;
+	do
+	{
+		fifo_cl_int = open(args->pathToFifo, O_RDWR);
+		if (fifo_cl_int == -1) perror("open");
+	} while (fifo_cl_int == -1);
+	
+	int waitTime;
+	if (args->shm->table[N_EM_ATENDIMENTO][args->nBalcao] > 10)
+		waitTime = 10;
+	else
+		waitTime = args->shm->table[N_EM_ATENDIMENTO][args->nBalcao];
+
+	sleep(waitTime);
+	char endMessage[100];
+	sprintf(endMessage, "fim_atendimento");
+
+	args->shm->table[N_EM_ATENDIMENTO][args->nBalcao]--;
+	args->shm->table[N_JA_ATENDIDOS][args->nBalcao]++;
+
+	int messagelen=strlen(endMessage)+1;
+	write(fifo_cl_int, endMessage,messagelen);
+	close(fifo_cl_int);
+
+	free(args->pathToFifo);
+
+	pthread_exit(NULL);
+}
+
+
 void *thr_balcao(void *arg)
 {
 	args_struct *args = (args_struct*) arg;
@@ -167,6 +209,8 @@ void *thr_balcao(void *arg)
 	int startAssisting = time(NULL); 
 	int elapsedTime = time(NULL) - startAssisting;
 
+	pthread_t answer_thread[10000];
+	int threadCounter = 0;
 	while (elapsedTime < args->openingTime)		
 	{
 		char str[100] = "";
@@ -175,33 +219,33 @@ void *thr_balcao(void *arg)
 			printf("\nNext Client: %s\n", str);
 
 			//--------------------ABRE/FECHA FIFO DO CLIENTE E ENVIA INFO----------
-			char fifo_c[100] = "/tmp/";
+			char *fifo_c = malloc(sizeof(char) * 100);
+			strcpy(fifo_c, "/tmp/");
 			strcat(fifo_c, str);
 			int fifo_cl_int = -1;
-			do
-			{		
-				fifo_cl_int = open(fifo_c, O_WRONLY);
-				if (fifo_cl_int == -1) sleep(1);
-			} while (fifo_cl_int == -1);
-			int waitTime;
-			if (shm->table[N_EM_ATENDIMENTO][nBalcao] > 10)
-				waitTime = 10;
-			else
-				waitTime = shm->table[N_EM_ATENDIMENTO][nBalcao];
-			sleep(waitTime);
-			char endMessage[100];
-			sprintf(endMessage, "fim_atendimento");
 
-			shm->table[N_EM_ATENDIMENTO][nBalcao]--;
-			shm->table[N_JA_ATENDIDOS][nBalcao]++;
+			args2_struct *toSend;
+			toSend = (args2_struct *) malloc(sizeof(args2_struct));
+			toSend->shm = shm;
+			toSend->pathToFifo = fifo_c;
+			toSend->nBalcao = nBalcao;
 
-			int messagelen=strlen(endMessage)+1;
-			write(fifo_cl_int, endMessage,messagelen);
-			close(fifo_cl_int);
+			pthread_create(&answer_thread[threadCounter], NULL, thr_atendimento, (void*) toSend);
+			threadCounter++;
 			//----------------------------------------------------------------
 
 		}
 		elapsedTime = time(NULL) - startAssisting;
+	}
+
+
+	close(fd);		//fecha o fifo
+
+	int j = 0;
+	while (threadCounter > j)
+	{
+		pthread_join(answer_thread[j], NULL);
+		j++;
 	}
 
 	shm->table[N_DURACAO][nBalcao] = args->openingTime;
@@ -217,8 +261,6 @@ void *thr_balcao(void *arg)
 		shm->numeroDeBalcoesExecucao--;
 
 	free(args);		//liberta memoria
-
-	close(fd);		//fecha o fifo
 
 	pthread_exit(NULL);
 } 

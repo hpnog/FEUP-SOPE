@@ -152,7 +152,11 @@ int main(int argc, char *argv[])
 			mkfifo(pathToFifo, 0660);
 
 			int fd_cl = -1;
+			do
+			{
 				fd_cl = open(pathToFifo, O_RDONLY);
+				if (fd_cl == -1) sleep(1);
+			} while (fd_cl == -1);
 			putchar('\n');
 			//----------------------------------------------------------------
 			char endMessage[100] = "";
