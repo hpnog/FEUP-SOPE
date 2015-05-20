@@ -25,11 +25,13 @@ typedef struct
 	pthread_cond_t items_cond;
 	pthread_mutex_t slots_lock;
 	pthread_mutex_t items_lock;
+	
+	pthread_mutex_t mutexLock;
 
 	int numeroDeBalcoes;
 	int numeroDeBalcoesExecucao;
 	time_t openingTime;
-	int table [7][1000];
+	double table [7][1000];
 	
 } SharedMem;
 
@@ -53,19 +55,19 @@ SharedMem * getSharedMemory(char* shm_name,int shm_size)
 	shmfd = shm_open(shm_name, O_RDWR, 0660);
 	if (shmfd <= 0)
 	{
-		perror("Failure in shm_open()");
+		perror("\nFailure in shm_open()");
 		return NULL;
 	}
 
 	if (ftruncate(shmfd,shm_size) < 0)
 	{
-		perror("Failure in ftruncate()");
+		perror("\nFailure in ftruncate()");
 		return NULL;
 	}								//attach this region to virtual memory
 	shm = mmap(0,shm_size,PROT_READ|PROT_WRITE,MAP_SHARED,shmfd,0);
 	if (shm == MAP_FAILED)
 	{
-		perror( "Failure in mmap()");
+		perror( "\nFailure in mmap()");
 		return NULL;
 	}								//initialize data in shared memory
 	
@@ -78,6 +80,8 @@ int getFdBalcao(SharedMem * shm)
 	int result = -1;
 	int minClients = -1;
 	int i = 0;
+
+	pthread_mutex_lock(&shm->mutexLock);
 	while (i < shm->numeroDeBalcoesExecucao)
 	{
 		if (result == -1)
@@ -92,9 +96,10 @@ int getFdBalcao(SharedMem * shm)
 		}
 		i++;
 	}
-	shm->table[N_EM_ATENDIMENTO][result]++;
+	int ret = shm->table[N_FIFO][result];
+	pthread_mutex_unlock(&shm->mutexLock);
 	printf("\nEscolheu o balcao: %d\n", result);
-	return shm->table[N_FIFO][result];
+	return ret;
 }
 
 int main(int argc, char *argv[])
@@ -116,7 +121,7 @@ int main(int argc, char *argv[])
 		pid_t pid = fork();
 		if (pid < 0)
 		{
-			perror("ERROR in fork().");
+			perror("\nERROR in fork().");
 			return 1;
 		}
 		else if (pid == 0)
@@ -130,7 +135,9 @@ int main(int argc, char *argv[])
 			//-------------ABRE O FIFO DO BALCAO-------------------------------
 			char fifoB[100] = "/tmp/fb_";
 			char pidB[50];
+			
 			int fifo_balcao = getFdBalcao(shm);
+			
 			sprintf(pidB, "%d", fifo_balcao);
 			strcat(fifoB, pidB);
 
