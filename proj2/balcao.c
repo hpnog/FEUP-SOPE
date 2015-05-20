@@ -45,11 +45,8 @@ int readline(int fd, char *str)
 { 
 	int n; 
 	do { 
-		printf("\nAntes do read");
 		n = read(fd,str,1); 
-		printf("\nDepois do read");
 	} while (n>0 && *str++ != '\0');
-	printf("\nTerminou o readline"); 
 	return (n>0); 
 } 
 //----------------------------------------------------------------------------------------------------
@@ -137,14 +134,16 @@ void *thr_balcao(void *arg)
 
 	printf("\nEntrou na thread do balcao\n");
 
+	//-------------------CRIA E ABRE O FIFO DO BALCAO---------
 	char fifoName[100] = "/tmp/fb_";
 	char pid[50];
 	sprintf(pid, "%d", getpid());
 	strcat(fifoName, pid);
 	mkfifo(fifoName, 0660);
-	printf("\nFIFO name: %s\n", fifoName);
-	int fd = open(fifoName, O_RDONLY | O_NONBLOCK);
 
+	int fd = open(fifoName, O_RDONLY | O_NONBLOCK);
+	putchar('\n');
+	//-------------------------------------------------------
 	SharedMem * shm;
 	shm = createSharedMemory(args->nameOfMem, sizeof(SharedMem));
 
@@ -156,7 +155,7 @@ void *thr_balcao(void *arg)
 	printf("\nNumero de balcoes: %d\n", shm->numeroDeBalcoes);
 
 	shm->table[N_BALCAO][shm->numeroDeBalcoes-1] = shm->numeroDeBalcoes;
-	shm->table[N_TEMPO][shm->numeroDeBalcoes-1] = time(NULL) - time(&shm->openingTime);
+	shm->table[N_TEMPO][shm->numeroDeBalcoes-1] = time(NULL) - shm->openingTime;
 	printf("\nTempo: %d", shm->table[N_TEMPO][shm->numeroDeBalcoes-1]);
 	shm->table[N_DURACAO][shm->numeroDeBalcoes-1] = -1;					//a alterar quando o balcao fecha
 	shm->table[N_FIFO][shm->numeroDeBalcoes-1] = getpid();
@@ -167,24 +166,50 @@ void *thr_balcao(void *arg)
 
 	int startAssisting = time(NULL); 
 	int elapsedTime = time(NULL) - startAssisting;
-	printf("\nSegundos passados: %d",elapsedTime);
+
 	while (elapsedTime < args->openingTime)		
 	{
-		printf("\nSegundos restantes: %d",elapsedTime);
 		char str[100] = "";
-		readline(fd, str);
-		if (strlen(str) > 0)
+		if (readline(fd, str))
 		{
-			printf("%s", str);		//Nao é só para imprimir
-			getc(stdin);
+			printf("\nNext Client: %s\n", str);
+
+			//--------------------ABRE/FECHA FIFO DO CLIENTE E ENVIA INFO----------
+			char fifo_c[100] = "/tmp/";
+			strcat(fifo_c, str);
+			int fifo_cl_int = -1;
+			do
+			{		
+				fifo_cl_int = open(fifo_c, O_WRONLY);
+				if (fifo_cl_int == -1) sleep(1);
+			} while (fifo_cl_int == -1);
+			int waitTime;
+			if (shm->table[N_EM_ATENDIMENTO][nBalcao] > 10)
+				waitTime = 10;
+			else
+				waitTime = shm->table[N_EM_ATENDIMENTO][nBalcao];
+			sleep(waitTime);
+			char endMessage[100];
+			sprintf(endMessage, "fim_atendimento");
+
+			shm->table[N_EM_ATENDIMENTO][nBalcao]--;
+			shm->table[N_JA_ATENDIDOS][nBalcao]++;
+
+			int messagelen=strlen(endMessage)+1;
+			write(fifo_cl_int, endMessage,messagelen);
+			close(fifo_cl_int);
+			//----------------------------------------------------------------
+
 		}
 		elapsedTime = time(NULL) - startAssisting;
 	}
 
 	shm->table[N_DURACAO][nBalcao] = args->openingTime;
+	shm->table[TEMPO_MEDIO_ATENDIMENTO][nBalcao] = shm->table[N_DURACAO][nBalcao] / shm->table[N_JA_ATENDIDOS][nBalcao];
+
 
 	printf("\nBalcao esteve aberto %d tempo\n", args->openingTime);
-	printf("\nNumero de balcoes em execucao: %d", shm->numeroDeBalcoesExecucao);
+	printf("\nNumero de balcoes em execucao: %d\n\n", shm->numeroDeBalcoesExecucao);
 
 	if (shm->numeroDeBalcoesExecucao == 1)
 		destroySharedMemory(shm, sizeof(SharedMem), args->nameOfMem);
@@ -200,6 +225,7 @@ void *thr_balcao(void *arg)
 
 int main(int argc, char *argv[])
 {
+	setbuf(stdout, NULL);
 	if (argc != 3)
 	{
 		printf("Wrong number of arguments\n");

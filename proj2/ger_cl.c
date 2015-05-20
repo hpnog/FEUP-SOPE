@@ -80,7 +80,7 @@ int getFdBalcao(SharedMem * shm)
 	int i = 0;
 	while (i < shm->numeroDeBalcoesExecucao)
 	{
-		if (result = -1)
+		if (result == -1)
 		{
 			result = i;
 			minClients = shm->table[N_EM_ATENDIMENTO][i];
@@ -92,11 +92,14 @@ int getFdBalcao(SharedMem * shm)
 		}
 		i++;
 	}
+	shm->table[N_EM_ATENDIMENTO][result]++;
+	printf("\nEscolheu o balcao: %d\n", result);
 	return shm->table[N_FIFO][result];
 }
 
 int main(int argc, char *argv[])
 {
+	setbuf(stdout, NULL);
 	if (argc != 3)
 	{
 		printf("Wrong number of arguments\n");
@@ -118,32 +121,47 @@ int main(int argc, char *argv[])
 		}
 		else if (pid == 0)
 		{
-			char fifoName[100] = "/tmp/fc_";
+			char fifoName[100] = "fc_";
 			char pid[50];
 			sprintf(pid, "%d", getpid());
 			strcat(fifoName, pid);
-			mkfifo(fifoName, 0660);
-			int fd_cl = open(fifoName, O_RDONLY | O_NONBLOCK);
 
+			
+			//-------------ABRE O FIFO DO BALCAO-------------------------------
 			char fifoB[100] = "/tmp/fb_";
 			char pidB[50];
 			int fifo_balcao = getFdBalcao(shm);
 			sprintf(pidB, "%d", fifo_balcao);
 			strcat(fifoB, pidB);
-			int fd_b = open(fifoB, O_WRONLY);
 
-			char message[100];
-			sprintf(message,"\nProcesso terminado hue hue %d\n", i+1); 
-			int messagelen=strlen(message)+1; 
-			write(fd_b,message,messagelen); 
-			printf("\nFifos criados e mensagem enviada!\n");
+			int fd_b = -1;
+			do
+			{
+				fd_b = open(fifoB, O_WRONLY);
+				if (fd_b == -1) sleep(1);
+			} while (fd_b == -1);
+			//------------------------------------------------------------------
+			int messagelen=strlen(fifoName)+1; 
+			write(fd_b,fifoName,messagelen); //escreve informacao no fifo do balcao acerca do seu fifo
 
 			close(fd_b);
+			//-------------CRIA E ABRE FIFO DO CLIENTE--------------------------------
+			char pathToFifo[100];
+			strcpy(pathToFifo, "/tmp/");
+			strcat(pathToFifo, fifoName);
+			mkfifo(pathToFifo, 0660);
+
+			int fd_cl = -1;
+				fd_cl = open(pathToFifo, O_RDONLY);
+			putchar('\n');
+			//----------------------------------------------------------------
+			char endMessage[100] = "";
+			readline(fd_cl, endMessage); //Le info de retorno
+			printf("\n%s", endMessage);
 			close(fd_cl);
 			return 0;
 		}
 		i++;
-		//sleep(1);	//tempor
 	}
 	i = 0;
 	while (i < nClients)
