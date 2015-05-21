@@ -31,6 +31,9 @@ typedef struct
 	int numeroDeBalcoes;
 	int numeroDeBalcoesExecucao;
 	time_t openingTime;
+
+	int counter;
+
 	double table [7][1000];
 	
 } SharedMem;
@@ -98,7 +101,6 @@ int getFdBalcao(SharedMem * shm)
 	}
 	int ret = shm->table[N_FIFO][result];
 	pthread_mutex_unlock(&shm->mutexLock);
-	printf("\nEscolheu o balcao: %d\n", result);
 	return ret;
 }
 
@@ -108,32 +110,34 @@ int main(int argc, char *argv[])
 	if (argc != 3)
 	{
 		printf("Wrong number of arguments\n");
-		return 1;
+		exit(EXIT_FAILURE);
 	}
 
 	int nClients = atoi(argv[2]);
 	SharedMem * shm;
 	shm = getSharedMemory(argv[1], sizeof(SharedMem));
 
-	int i = 0;
-	while (i < nClients)
+	int ii = 0;
+	printf("\nnClientes: %d", nClients);
+	shm->counter = 0;
+	while (ii < nClients)
 	{
-		pid_t pid = fork();
-		if (pid < 0)
+		pid_t pidF = fork();
+		if (pidF < 0)
 		{
 			perror("\nERROR in fork().");
-			return 1;
+			exit(EXIT_FAILURE);
 		}
-		else if (pid == 0)
+		else if (pidF == 0)
 		{
-			char fifoName[100] = "fc_";
+			char fifoName[200] = "fc_";
 			char pid[50];
 			sprintf(pid, "%d", getpid());
 			strcat(fifoName, pid);
 
 			
 			//-------------ABRE O FIFO DO BALCAO-------------------------------
-			char fifoB[100] = "/tmp/fb_";
+			char fifoB[200] = "/tmp/fb_";
 			char pidB[50];
 			
 			int fifo_balcao = getFdBalcao(shm);
@@ -149,7 +153,8 @@ int main(int argc, char *argv[])
 			} while (fd_b == -1);
 			//------------------------------------------------------------------
 			int messagelen=strlen(fifoName)+1; 
-			write(fd_b,fifoName,messagelen); //escreve informacao no fifo do balcao acerca do seu fifo
+			write(fd_b,fifoName,messagelen);								//escreve informacao no fifo do balcao acerca do seu fifo
+			shm->counter++;
 
 			close(fd_b);
 			//-------------CRIA E ABRE FIFO DO CLIENTE--------------------------------
@@ -158,28 +163,36 @@ int main(int argc, char *argv[])
 			strcat(pathToFifo, fifoName);
 			mkfifo(pathToFifo, 0660);
 
-			int fd_cl = -1;
+			int fd_cl;
 			do
 			{
 				fd_cl = open(pathToFifo, O_RDONLY);
 				if (fd_cl == -1) sleep(1);
 			} while (fd_cl == -1);
-			putchar('\n');
-			//----------------------------------------------------------------
-			char endMessage[100] = "";
-			readline(fd_cl, endMessage); //Le info de retorno
-			printf("\n%s", endMessage);
+						//----------------------------------------------------------------
+			char endMessage[100];
+			while(readline(fd_cl, endMessage)){
+				if(strcmp(endMessage,"fim_atendimento") == 0){
+					exit(EXIT_SUCCESS);
+				}else{
+					printf("\nAsneira\n");
+					exit(EXIT_FAILURE);
+				}
+			} //Le info de retorno
 			close(fd_cl);
-			return 0;
+			exit(EXIT_SUCCESS);
 		}
-		i++;
+		
+			ii++;	
 	}
-	i = 0;
+	int i = 0;
+
 	while (i < nClients)
 	{
-		wait();
+		wait(NULL);
 		i++;
 	}
 
-	return 0;
+
+	exit(EXIT_SUCCESS);
 }

@@ -29,6 +29,8 @@ typedef struct
 
 	pthread_mutex_t mutexLock;
 
+	int counter;
+
 	int numeroDeBalcoes;
 	int numeroDeBalcoesExecucao;
 	time_t openingTime;
@@ -143,6 +145,8 @@ void destroySharedMemory(SharedMem *shm, int shm_size, char * shm_name)
 	}
 } 
 //--------------------------------------------------------------------------------------------------
+int terminated = 0;
+
 void *thr_atendimento(void *arg)
 {
 	args2_struct *args = (args2_struct*) arg;
@@ -159,10 +163,7 @@ void *thr_atendimento(void *arg)
 		waitTime = 10;
 	else
 		waitTime = args->shm->table[N_EM_ATENDIMENTO][args->nBalcao];
-
-	
 	pthread_mutex_unlock(&args->shm->mutexLock);
-
 	sleep(waitTime);
 
 	pthread_mutex_lock(&args->shm->mutexLock);
@@ -170,16 +171,14 @@ void *thr_atendimento(void *arg)
 	args->shm->table[N_JA_ATENDIDOS][args->nBalcao]++;
 	pthread_mutex_unlock(&args->shm->mutexLock);
 
-	char endMessage[100];
-	sprintf(endMessage, "fim_atendimento");
+	char endMessage[] = "fim_atendimento";
 
-	int messagelen=strlen(endMessage)+1;
+	int messagelen = strlen(endMessage)+1;
 	write(fifo_cl_int, endMessage,messagelen);
 	close(fifo_cl_int);
 
-	free(args->pathToFifo);
-
-	printf("\nTerminou uma thread de atendimento");
+	terminated++;
+	printf("\nTerminou uma thread de atendimento: %d", terminated);
 	pthread_exit(NULL);
 }
 
@@ -211,7 +210,6 @@ void *thr_balcao(void *arg)
 	printf("Opening Time: %d\n", args->openingTime);
 	printf("\nVariaveis da mem partilhada:\n\n");
 	printf("Tempo de abertura: ");
-	pthread_mutex_lock(&shm->mutexLock);
 	printf("%s", ctime(&shm->openingTime));
 	printf("\nNumero de balcoes: %d\n", shm->numeroDeBalcoes);
 
@@ -225,28 +223,26 @@ void *thr_balcao(void *arg)
 	shm->table[TEMPO_MEDIO_ATENDIMENTO][shm->numeroDeBalcoes-1] = 0;	//a alterar semrpe que um cliente termina o seu atendimento
 	int nBalcao = shm->numeroDeBalcoes-1;
 
-	pthread_mutex_unlock(&shm->mutexLock);
 
 	int startAssisting = time(NULL); 
 	int elapsedTime = time(NULL) - startAssisting;
 
-	pthread_t answer_thread[10000];
+	pthread_t answer_thread[5000];
 	int threadCounter = 0;
+
+	args2_struct *toSend;
+	toSend = (args2_struct *) malloc(sizeof(args2_struct));
+
 	while (elapsedTime < args->openingTime)		
 	{
 		char str[100] = "";
 		if (readline(fd, str))
 		{
-			printf("\nNext Client: %s", str);
-
 			//--------------------ABRE/FECHA FIFO DO CLIENTE E ENVIA INFO----------
-			char *fifo_c = malloc(sizeof(char) * 100);
-			strcpy(fifo_c, "/tmp/");
+			char fifo_c[] = "/tmp/";
 			strcat(fifo_c, str);
 			int fifo_cl_int = -1;
 
-			args2_struct *toSend;
-			toSend = (args2_struct *) malloc(sizeof(args2_struct));
 			toSend->shm = shm;
 			toSend->pathToFifo = fifo_c;
 			toSend->nBalcao = nBalcao;
@@ -267,9 +263,11 @@ void *thr_balcao(void *arg)
 	while (threadCounter > j)
 	{
 		pthread_join(answer_thread[j], NULL);
+		printf("\nJoin: %d", (j + 1));
 		j++;
 	}
-	pthread_mutex_lock(&shm->mutexLock);
+	printf("\nThread Counter: %d", threadCounter);
+
 	shm->table[N_DURACAO][nBalcao] = args->openingTime;
 	shm->table[TEMPO_MEDIO_ATENDIMENTO][nBalcao] = shm->table[N_DURACAO][nBalcao] / shm->table[N_JA_ATENDIDOS][nBalcao];
 	shm->table[N_EM_ATENDIMENTO][nBalcao] = 0;
@@ -285,7 +283,6 @@ void *thr_balcao(void *arg)
 	printf("\n\n\nTotal de clientes atendidos: %d", total);
 	printf("\nBalcao esteve aberto %d tempo\n", args->openingTime);
 	printf("\nNumero de balcoes em execucao: %d\n\n", shm->numeroDeBalcoesExecucao);
-	pthread_mutex_unlock(&shm->mutexLock);
 	if (shm->numeroDeBalcoesExecucao == 1)
 		destroySharedMemory(shm, sizeof(SharedMem), args->nameOfMem);
 	else
