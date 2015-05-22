@@ -42,13 +42,13 @@ typedef struct
 {
 	time_t atOpen;
 	int openingTime;
-	char * nameOfMem;
+	char nameOfMem[MAX_NUMBER_LINE];
 } args_struct;
 
 typedef struct
 {
 	SharedMem *shm;
-	char * pathToFifo;
+	char pathToFifo[MAX_NUMBER_LINE];
 	int nBalcao;
 
 } args2_struct;
@@ -104,7 +104,7 @@ SharedMem * createSharedMemory(char* shm_name,int shm_size)
 	}
 	if (exists == 1)
 	{
-		pthread_mutex_lock(&shm->mutexLock);
+		while (pthread_mutex_trylock(&shm->mutexLock)) {}
 		shm->numeroDeBalcoes++;
 		shm->numeroDeBalcoesExecucao++;
 		pthread_mutex_unlock(&shm->mutexLock);
@@ -158,7 +158,7 @@ void *thr_atendimento(void *arg)
 	
 	int waitTime;
 
-	pthread_mutex_lock(&args->shm->mutexLock);
+	while (pthread_mutex_trylock(&args->shm->mutexLock)) {}
 	int tempo = args->shm->table[N_EM_ATENDIMENTO][args->nBalcao];
 	pthread_mutex_unlock(&args->shm->mutexLock);
 
@@ -169,7 +169,7 @@ void *thr_atendimento(void *arg)
 
 	sleep(waitTime);
 
-	pthread_mutex_lock(&args->shm->mutexLock);
+	while (pthread_mutex_trylock(&args->shm->mutexLock)) {}
 	args->shm->table[N_EM_ATENDIMENTO][args->nBalcao]--;
 	args->shm->table[N_JA_ATENDIDOS][args->nBalcao]++;
 	pthread_mutex_unlock(&args->shm->mutexLock);
@@ -181,11 +181,12 @@ void *thr_atendimento(void *arg)
 	if (write(fifo_cl_int, endMessage,messagelen) < 0)
 		perror("write()");
 	else
-		printf("\nSent final message");
+		printf("\nSent final message to %s", args->pathToFifo);
 
 	if (close(fifo_cl_int) < 0)
 		perror("close()");
 
+	free(arg);
 	pthread_exit(NULL);
 }
 
@@ -236,23 +237,25 @@ void *thr_balcao(void *arg)
 	pthread_t answer_thread[5000];
 	int threadCounter = 0;
 
-	args2_struct *toSend;
-	toSend = (args2_struct *) malloc(sizeof(args2_struct));
-
-	while (elapsedTime < args->openingTime)		
+		while (elapsedTime < args->openingTime)		
 	{
 		char str[MAX_NUMBER_LINE];
 		if (readline(fd, str))
 		{
 			//--------------------ABRE/FECHA FIFO DO CLIENTE E ENVIA INFO----------
+			args2_struct *toSend = malloc(sizeof(args2_struct));
+			//toSend = (args2_struct *) malloc(sizeof(args2_struct));
+
 			char fifo_c[MAX_NUMBER_LINE];
 			strcpy(fifo_c, "/tmp/");
 			strcat(fifo_c, str);
 			int fifo_cl_int = -1;
 
 			toSend->shm = shm;
-			toSend->pathToFifo = fifo_c;
+			strcpy(toSend->pathToFifo, fifo_c);
 			toSend->nBalcao = nBalcao;
+
+			printf("\nWhat is about to be sent to thr_atendimento: |%s|", toSend->pathToFifo);
 
 			shm->table[N_EM_ATENDIMENTO][nBalcao]++;
 			if (pthread_create(&answer_thread[threadCounter], NULL, thr_atendimento, (void*) toSend) == 0)
@@ -315,7 +318,7 @@ int main(int argc, char *argv[])
 	args_struct *toSend;
 	toSend = (args_struct *) malloc(sizeof(args_struct));
 	toSend->openingTime = atoi(argv[2]);
-	toSend->nameOfMem = argv[1];
+	strcpy(toSend->nameOfMem, argv[1]);
 	toSend->atOpen = time(NULL);
 
 	pthread_t desk_thread;

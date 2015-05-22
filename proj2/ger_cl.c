@@ -84,7 +84,7 @@ int getFdBalcao(SharedMem * shm)
 	int minClients = -1;
 	int i = 0;
 
-	pthread_mutex_lock(&shm->mutexLock);
+	while (pthread_mutex_trylock(&shm->mutexLock)) {}
 	while (i < shm->numeroDeBalcoesExecucao)
 	{
 		if (result == -1)
@@ -159,7 +159,6 @@ int main(int argc, char *argv[])
 			if (close(fd_b) < 0)
 				perror("close()");
 
-			printf("\nAbout to open clients FIFO (Client %d)", ii);
 			//-------------CRIA E ABRE FIFO DO CLIENTE--------------------------------
 			char pathToFifo[MAX_NUMBER_LINE];
 			strcpy(pathToFifo, "/tmp/");
@@ -170,11 +169,10 @@ int main(int argc, char *argv[])
 			int fd_cl;
 			do
 			{
-				fd_cl = open(pathToFifo, O_RDONLY | O_NONBLOCK);
+				fd_cl = open(pathToFifo, O_RDONLY);
 				if (fd_cl == -1) sleep(1);
 			} while (fd_cl == -1);
 						//----------------------------------------------------------------
-			printf("\nClients FIFO opened (Client %d)", ii);
 
 			char endMessage[MAX_NUMBER_LINE];
 
@@ -206,7 +204,7 @@ int main(int argc, char *argv[])
 		wait();
 		i++;
 	}
-
+	putchar('\n');
 
 	exit(EXIT_SUCCESS);
 }
