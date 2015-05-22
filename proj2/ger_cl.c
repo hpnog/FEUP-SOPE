@@ -18,6 +18,8 @@
 #define N_JA_ATENDIDOS 5
 #define TEMPO_MEDIO_ATENDIMENTO 6
 
+#define MAX_NUMBER_LINE 500
+
 typedef struct
 {
 	pthread_mutex_t buffer_lock;
@@ -31,8 +33,6 @@ typedef struct
 	int numeroDeBalcoes;
 	int numeroDeBalcoesExecucao;
 	time_t openingTime;
-
-	int counter;
 
 	double table [7][1000];
 	
@@ -58,20 +58,20 @@ SharedMem * getSharedMemory(char* shm_name,int shm_size)
 	shmfd = shm_open(shm_name, O_RDWR, 0660);
 	if (shmfd <= 0)
 	{
-		perror("\nFailure in shm_open()");
-		return NULL;
+		perror("shm_open()");
+		exit(EXIT_FAILURE);
 	}
 
 	if (ftruncate(shmfd,shm_size) < 0)
 	{
-		perror("\nFailure in ftruncate()");
-		return NULL;
+		perror("ftruncate()");
+		exit(EXIT_FAILURE);
 	}								//attach this region to virtual memory
 	shm = mmap(0,shm_size,PROT_READ|PROT_WRITE,MAP_SHARED,shmfd,0);
 	if (shm == MAP_FAILED)
 	{
-		perror( "\nFailure in mmap()");
-		return NULL;
+		perror( "mmap()");
+		exit(EXIT_FAILURE);
 	}								//initialize data in shared memory
 	
 	return (SharedMem *) shm;
@@ -119,26 +119,26 @@ int main(int argc, char *argv[])
 
 	int ii = 0;
 	printf("\nnClientes: %d", nClients);
-	shm->counter = 0;
 	while (ii < nClients)
 	{
 		pid_t pidF = fork();
 		if (pidF < 0)
 		{
-			perror("\nERROR in fork().");
+			perror("fork()");
 			exit(EXIT_FAILURE);
 		}
 		else if (pidF == 0)
 		{
-			char fifoName[200] = "fc_";
-			char pid[50];
+			char fifoName[MAX_NUMBER_LINE];
+			strcpy(fifoName, "fc_");
+			char pid[MAX_NUMBER_LINE];
 			sprintf(pid, "%d", getpid());
 			strcat(fifoName, pid);
 
 			
 			//-------------ABRE O FIFO DO BALCAO-------------------------------
-			char fifoB[200] = "/tmp/fb_";
-			char pidB[50];
+			char fifoB[MAX_NUMBER_LINE] = "/tmp/fb_";
+			char pidB[MAX_NUMBER_LINE];
 			
 			int fifo_balcao = getFdBalcao(shm);
 			
@@ -153,43 +153,57 @@ int main(int argc, char *argv[])
 			} while (fd_b == -1);
 			//------------------------------------------------------------------
 			int messagelen=strlen(fifoName)+1; 
-			write(fd_b,fifoName,messagelen);								//escreve informacao no fifo do balcao acerca do seu fifo
-			shm->counter++;
+			if (write(fd_b,fifoName,messagelen) < 0)
+				perror("write()");								//escreve informacao no fifo do balcao acerca do seu fifo
 
-			close(fd_b);
+			if (close(fd_b) < 0)
+				perror("close()");
+
+			printf("\nAbout to open clients FIFO (Client %d)", ii);
 			//-------------CRIA E ABRE FIFO DO CLIENTE--------------------------------
-			char pathToFifo[100];
+			char pathToFifo[MAX_NUMBER_LINE];
 			strcpy(pathToFifo, "/tmp/");
 			strcat(pathToFifo, fifoName);
-			mkfifo(pathToFifo, 0660);
+			if (mkfifo(pathToFifo, 0660) == -1)
+				perror("mkfifo()");
 
 			int fd_cl;
 			do
 			{
-				fd_cl = open(pathToFifo, O_RDONLY);
+				fd_cl = open(pathToFifo, O_RDONLY | O_NONBLOCK);
 				if (fd_cl == -1) sleep(1);
 			} while (fd_cl == -1);
 						//----------------------------------------------------------------
-			char endMessage[100];
-			while(readline(fd_cl, endMessage)){
+			printf("\nClients FIFO opened (Client %d)", ii);
+
+			char endMessage[MAX_NUMBER_LINE];
+
+			while(readline(fd_cl, endMessage)) {
+				printf("\nRead final message as follows: %s (Client %d)", endMessage, ii);
 				if(strcmp(endMessage,"fim_atendimento") == 0){
+					if (close(fd_cl) < 0)
+						perror("close()");
 					exit(EXIT_SUCCESS);
 				}else{
-					printf("\nAsneira\n");
+					if (close(fd_cl) < 0)
+						perror("close()");
 					exit(EXIT_FAILURE);
 				}
 			} //Le info de retorno
-			close(fd_cl);
+
+			if (close(fd_cl) < 0)
+				perror("close()");
 			exit(EXIT_SUCCESS);
 		}
-		
+		else if (pidF > 0)
 			ii++;	
 	}
 	int i = 0;
 
 	while (i < nClients)
 	{
-		wait(NULL);
+		printf("\nWaiting %d", i);
+		wait();
 		i++;
 	}
 
