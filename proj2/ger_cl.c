@@ -9,6 +9,7 @@
 #include <sys/stat.h>
 #include <time.h>
 #include <string.h>
+#include <sys/wait.h>
 
 #define N_BALCAO 0
 #define N_TEMPO 1
@@ -30,6 +31,9 @@ typedef struct
 	
 	pthread_mutex_t mutexLock;
 
+	FILE * logFile;
+	char nameOfLog[MAX_NUMBER_LINE];
+
 	int numeroDeBalcoes;
 	int numeroDeBalcoesExecucao;
 	time_t openingTime;
@@ -48,7 +52,28 @@ int readline(int fd, char *str)
 	return (n>0); 
 } 
 //----------------------------------------------------------------------------------------------------
+void printTime(FILE * logFile)
+{
+	char buffer[26];
+	time_t timer;
+    struct tm* tm_info;
 
+    time(&timer);
+    tm_info = localtime(&timer);
+
+    strftime(buffer, 26, "%Y-%m-%d %H:%M:%S", tm_info);
+    fprintf(logFile, " %s", buffer);
+    fprintf(logFile, "\t| ");
+}
+
+void printOnLog(SharedMem * shm,char * who, int num, char * message)
+{
+
+	shm->logFile = fopen(shm->nameOfLog, "a");
+	printTime(shm->logFile);
+	fprintf(shm->logFile, "%s\t| %d\t\t| %s\t| fc_%d\n", who,num, message, getpid());
+	fclose(shm->logFile);
+}
 //----------------------------------------CRIA MEMORIA PARTILHADA-------------------------------------------
 SharedMem * getSharedMemory(char* shm_name,int shm_size)
 {
@@ -78,7 +103,7 @@ SharedMem * getSharedMemory(char* shm_name,int shm_size)
 }
 //--------------------------------------------------------------------------------------------------
 
-int getFdBalcao(SharedMem * shm)
+int getFdBalcao(SharedMem * shm, int * numberOfDesk)
 {
 	int result = -1;
 	int minClients = -1;
@@ -99,7 +124,9 @@ int getFdBalcao(SharedMem * shm)
 		}
 		i++;
 	}
+	*numberOfDesk = result+1;
 	int ret = shm->table[N_FIFO][result];
+	shm->table[N_EM_ATENDIMENTO][result]++;
 	pthread_mutex_unlock(&shm->mutexLock);
 	return ret;
 }
@@ -140,7 +167,8 @@ int main(int argc, char *argv[])
 			char fifoB[MAX_NUMBER_LINE] = "/tmp/fb_";
 			char pidB[MAX_NUMBER_LINE];
 			
-			int fifo_balcao = getFdBalcao(shm);
+			int numberOfDesk = 0;
+			int fifo_balcao = getFdBalcao(shm, &numberOfDesk);
 			
 			sprintf(pidB, "%d", fifo_balcao);
 			strcat(fifoB, pidB);
@@ -153,11 +181,13 @@ int main(int argc, char *argv[])
 			} while (fd_b == -1);
 			//------------------------------------------------------------------
 			int messagelen=strlen(fifoName)+1; 
+			printOnLog(shm,"Cliente", numberOfDesk, "pede_atendimento           ");
 			if (write(fd_b,fifoName,messagelen) < 0)
 				perror("write()");								//escreve informacao no fifo do balcao acerca do seu fifo
 
 			if (close(fd_b) < 0)
 				perror("close()");
+			
 
 			//-------------CRIA E ABRE FIFO DO CLIENTE--------------------------------
 			char pathToFifo[MAX_NUMBER_LINE];
@@ -166,19 +196,21 @@ int main(int argc, char *argv[])
 			if (mkfifo(pathToFifo, 0660) == -1)
 				perror("mkfifo()");
 
+			printOnLog(shm,"Balcao", numberOfDesk, "inicia_atendimento_cliente");
 			int fd_cl;
 			do
 			{
 				fd_cl = open(pathToFifo, O_RDONLY);
 				if (fd_cl == -1) sleep(1);
 			} while (fd_cl == -1);
-						//----------------------------------------------------------------
+			//----------------------------------------------------------------
 
 			char endMessage[MAX_NUMBER_LINE];
 
 			while(readline(fd_cl, endMessage)) {
 				printf("\nRead final message as follows: %s (Client %d)", endMessage, ii);
 				if(strcmp(endMessage,"fim_atendimento") == 0){
+					printOnLog(shm, "Cliente", numberOfDesk, endMessage);
 					if (close(fd_cl) < 0)
 						perror("close()");
 					exit(EXIT_SUCCESS);
@@ -201,7 +233,8 @@ int main(int argc, char *argv[])
 	while (i < nClients)
 	{
 		printf("\nWaiting %d", i);
-		wait();
+		int status;
+		wait(&status);
 		i++;
 	}
 	putchar('\n');

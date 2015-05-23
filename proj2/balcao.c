@@ -31,6 +31,9 @@ typedef struct
 
 	pthread_mutex_t mutexLock;
 
+	FILE * logFile;
+	char nameOfLog[MAX_NUMBER_LINE];
+
 	int numeroDeBalcoes;
 	int numeroDeBalcoesExecucao;
 	time_t openingTime;
@@ -63,6 +66,41 @@ int readline(int fd, char *str)
 	return (n>0); 
 } 
 //----------------------------------------------------------------------------------------------------
+void printTime(FILE * logFile)
+{
+	char buffer[26];
+	time_t timer;
+    struct tm* tm_info;
+
+    time(&timer);
+    tm_info = localtime(&timer);
+
+    strftime(buffer, 26, "%Y-%m-%d %H:%M:%S", tm_info);
+    fprintf(logFile, " %s", buffer);
+    fprintf(logFile, "\t| ");
+}
+
+void initializeLogFile(SharedMem *shm)
+{
+	shm->logFile = fopen(shm->nameOfLog, "w");
+
+	fprintf(shm->logFile, " quando\t\t\t| quem\t\t| balcao\t| o_que\t\t\t\t| canal_criado/usado\n");
+	fprintf(shm->logFile, "-------------------------------------------------------------------------------------------------------------\n");
+
+	fclose(shm->logFile);
+}
+
+void printOnLog(SharedMem * shm, char * who, int num, char * message)
+{
+
+	shm->logFile = fopen(shm->nameOfLog, "a");
+	printTime(shm->logFile);
+	if (!strcmp("inicia_mem_partilhada       ", message))
+		fprintf(shm->logFile, "%s\t| %d\t\t| %s\t| %s\n",who, num, message, "-");
+	else
+		fprintf(shm->logFile, "%s\t| %d\t\t| %s\t| fb_%d\n", who, num, message, getpid());
+	fclose(shm->logFile);
+}
 
 //----------------------------------------CRIA MEMORIA PARTILHADA-------------------------------------------
 SharedMem * createSharedMemory(char* shm_name,int shm_size)
@@ -99,8 +137,21 @@ SharedMem * createSharedMemory(char* shm_name,int shm_size)
 		shm->openingTime = time(NULL);
 		shm->numeroDeBalcoes = 1;
 		shm->numeroDeBalcoesExecucao = 1;
+		char * nameOfLog = malloc(sizeof(char) * MAX_NUMBER_LINE);
+		strcpy(nameOfLog, shm_name);
+		nameOfLog++;
+		strcat(nameOfLog, ".log");
+		strcpy(shm->nameOfLog, nameOfLog);
+		nameOfLog--;
+		free(nameOfLog);
+
+		initializeLogFile(shm);
+		
+		printOnLog(shm,"Balcao", 1, "inicia_mem_partilhada       ");
+
 		//Inicializa o mutex
 		pthread_mutex_init(&shm->mutexLock, NULL);
+		
 	}
 	if (exists == 1)
 	{
@@ -185,7 +236,9 @@ void *thr_atendimento(void *arg)
 
 	if (close(fifo_cl_int) < 0)
 		perror("close()");
-
+	SharedMem * shm = args->shm;
+	int tempos = args->nBalcao + 1;
+	//printOnLog(shm,"Balcao", tempos, "fim_atendimento_cliente");
 	free(arg);
 	pthread_exit(NULL);
 }
@@ -231,6 +284,8 @@ void *thr_balcao(void *arg)
 	shm->table[N_JA_ATENDIDOS][nBalcao] = 0;				//a alterar sempre que um cliente termina o seu atendimento
 	shm->table[TEMPO_MEDIO_ATENDIMENTO][nBalcao] = 0;	//a alterar semrpe que um cliente termina o seu atendimento
 	
+	printOnLog(shm,"Balcao", nBalcao + 1, "inicia_linh_mem_partilhada");
+
 	int startAssisting = time(NULL); 
 	int elapsedTime = time(NULL) - startAssisting;
 
@@ -249,7 +304,6 @@ void *thr_balcao(void *arg)
 			char fifo_c[MAX_NUMBER_LINE];
 			strcpy(fifo_c, "/tmp/");
 			strcat(fifo_c, str);
-			int fifo_cl_int = -1;
 
 			toSend->shm = shm;
 			strcpy(toSend->pathToFifo, fifo_c);
@@ -257,7 +311,6 @@ void *thr_balcao(void *arg)
 
 			printf("\nWhat is about to be sent to thr_atendimento: |%s|", toSend->pathToFifo);
 
-			shm->table[N_EM_ATENDIMENTO][nBalcao]++;
 			if (pthread_create(&answer_thread[threadCounter], NULL, thr_atendimento, (void*) toSend) == 0)
 						threadCounter++;
 					else
