@@ -74,6 +74,15 @@ void printOnLog(SharedMem * shm,char * who, int num, char * message)
 	fprintf(shm->logFile, "%s\t| %d\t\t| %s\t| fc_%d\n", who,num, message, getpid());
 	fclose(shm->logFile);
 }
+
+void printOnLogPid(SharedMem * shm,char * who, int num, char * message, int pid)
+{
+
+	shm->logFile = fopen(shm->nameOfLog, "a");
+	printTime(shm->logFile);
+	fprintf(shm->logFile, "%s\t| %d\t\t| %s\t| fc_%d\n", who,num, message, pid);
+	fclose(shm->logFile);
+}
 //----------------------------------------CRIA MEMORIA PARTILHADA-------------------------------------------
 SharedMem * getSharedMemory(char* shm_name,int shm_size)
 {
@@ -210,7 +219,9 @@ int main(int argc, char *argv[])
 			while(readline(fd_cl, endMessage)) {
 				printf("\nRead final message as follows: %s (Client %d)", endMessage, ii);
 				if(strcmp(endMessage,"fim_atendimento") == 0){
-					printOnLog(shm, "Cliente", numberOfDesk, endMessage);
+					char end[MAX_NUMBER_LINE];
+					sprintf(end, "%s\t\t\t", endMessage);
+					printOnLog(shm, "Cliente", numberOfDesk, end);
 					if (close(fd_cl) < 0)
 						perror("close()");
 					exit(EXIT_SUCCESS);

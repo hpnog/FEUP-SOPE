@@ -90,16 +90,13 @@ void initializeLogFile(SharedMem *shm)
 	fclose(shm->logFile);
 }
 
-void printOnLog(SharedMem * shm, char * who, int num, char * message)
+void printOnLogPid(FILE * logFile, char * nameOfLog,char * who, int num, char * message, char * pid)
 {
 
-	shm->logFile = fopen(shm->nameOfLog, "a");
-	printTime(shm->logFile);
-	if (!strcmp("inicia_mem_partilhada       ", message))
-		fprintf(shm->logFile, "%s\t| %d\t\t| %s\t| %s\n",who, num, message, "-");
-	else
-		fprintf(shm->logFile, "%s\t| %d\t\t| %s\t| fb_%d\n", who, num, message, getpid());
-	fclose(shm->logFile);
+	logFile = fopen(nameOfLog, "a");
+	printTime(logFile);
+	fprintf(logFile, "%s\t| %d\t\t| %s\t| %s\n", who,num, message, pid);
+	fclose(logFile);
 }
 
 //----------------------------------------CRIA MEMORIA PARTILHADA-------------------------------------------
@@ -147,7 +144,9 @@ SharedMem * createSharedMemory(char* shm_name,int shm_size)
 
 		initializeLogFile(shm);
 		
-		printOnLog(shm,"Balcao", 1, "inicia_mem_partilhada       ");
+		char pid[MAX_NUMBER_LINE];
+		sprintf(pid, "fb_%d", getpid());
+		printOnLogPid(shm->logFile, shm->nameOfLog,"Balcao", 1, "inicia_mem_partilhada       ", pid);
 
 		//Inicializa o mutex
 		pthread_mutex_init(&shm->mutexLock, NULL);
@@ -165,7 +164,7 @@ SharedMem * createSharedMemory(char* shm_name,int shm_size)
 //--------------------------------------------------------------------------------------------------
 
 //---------------------------------DESTROI A MEMORIA PARTILHADA-------------------------------------
-void destroySharedMemory(SharedMem *shm, int shm_size, char * shm_name)
+void destroySharedMemory(SharedMem *shm, int nBalcao, int shm_size, char * shm_name)
 {
 	printf("\n\nTabela:\n\n");
 	printf("N_B\t\tT\t\tDUR\t\tFIFO\t\tEM_AT\t\tJA_AT\t\tTMED\n");
@@ -182,6 +181,10 @@ void destroySharedMemory(SharedMem *shm, int shm_size, char * shm_name)
 			shm->table[TEMPO_MEDIO_ATENDIMENTO][i]);
 		i++;
 	}
+
+	char pidN[MAX_NUMBER_LINE];
+	sprintf(pidN,"fb_%d", getpid());
+	printOnLogPid(shm->logFile, shm->nameOfLog,"Balcao", nBalcao, "fecha_loja\t\t\t\t", pidN);
 
 	if (munmap(shm,shm_size) < 0)
 	{
@@ -229,27 +232,31 @@ void *thr_atendimento(void *arg)
 
 	int messagelen = strlen(endMessage)+1;
 
+	char * pathT = malloc(sizeof(char) * MAX_NUMBER_LINE);
+	strcpy(pathT, args->pathToFifo);
+	pathT += 5;
+	printOnLogPid(args->shm->logFile, args->shm->nameOfLog,"Balcao", args->nBalcao, "fim_atendimento_cliente\t", pathT);
+	pathT -= 5;
+	free(pathT);
+
 	if (write(fifo_cl_int, endMessage,messagelen) < 0)
 		perror("write()");
 	else
+	{
 		printf("\nSent final message to %s", args->pathToFifo);
+			
+	}
 
 	if (close(fifo_cl_int) < 0)
 		perror("close()");
-	SharedMem * shm = args->shm;
-	int tempos = args->nBalcao + 1;
-	//printOnLog(shm,"Balcao", tempos, "fim_atendimento_cliente");
-	free(arg);
+
+	free(args);
 	pthread_exit(NULL);
 }
 
 void *thr_balcao(void *arg)
 {
 	args_struct *args = (args_struct*) arg;
-
-	//--------------------------INICIALIZA A CONDITION VARIABLE---------------------------
-
-	//------------------------------------------------------------------------------------
 
 	printf("\nEntrou na thread do balcao\n");
 
@@ -284,7 +291,9 @@ void *thr_balcao(void *arg)
 	shm->table[N_JA_ATENDIDOS][nBalcao] = 0;				//a alterar sempre que um cliente termina o seu atendimento
 	shm->table[TEMPO_MEDIO_ATENDIMENTO][nBalcao] = 0;	//a alterar semrpe que um cliente termina o seu atendimento
 	
-	printOnLog(shm,"Balcao", nBalcao + 1, "inicia_linh_mem_partilhada");
+	char pidW[MAX_NUMBER_LINE];
+	sprintf(pidW, "fb_%d", getpid());
+	printOnLogPid(shm->logFile, shm->nameOfLog,"Balcao", nBalcao, "inicia_linh_mem_partilhada", pidW);
 
 	int startAssisting = time(NULL); 
 	int elapsedTime = time(NULL) - startAssisting;
@@ -292,14 +301,13 @@ void *thr_balcao(void *arg)
 	pthread_t answer_thread[5000];
 	int threadCounter = 0;
 
-		while (elapsedTime < args->openingTime)		
+	while (elapsedTime < args->openingTime)		
 	{
 		char str[MAX_NUMBER_LINE];
 		if (readline(fd, str))
 		{
 			//--------------------ABRE/FECHA FIFO DO CLIENTE E ENVIA INFO----------
 			args2_struct *toSend = malloc(sizeof(args2_struct));
-			//toSend = (args2_struct *) malloc(sizeof(args2_struct));
 
 			char fifo_c[MAX_NUMBER_LINE];
 			strcpy(fifo_c, "/tmp/");
@@ -346,11 +354,14 @@ void *thr_balcao(void *arg)
 		c++;
 	}
 
+	char pidW2[MAX_NUMBER_LINE];
+	sprintf(pidW2, "fb_%d", getpid());
+	printOnLogPid(shm->logFile, shm->nameOfLog, "Balcao", nBalcao, "fecha_balcao\t\t\t\t", pidW2);
 	printf("\n\n\nTotal de clientes atendidos: %d", total);
 	printf("\nBalcao esteve aberto %d tempo\n", args->openingTime);
 	printf("\nNumero de balcoes em execucao: %d\n\n", shm->numeroDeBalcoesExecucao);
 	if (shm->numeroDeBalcoesExecucao == 1)
-		destroySharedMemory(shm, sizeof(SharedMem), args->nameOfMem);
+		destroySharedMemory(shm,nBalcao, sizeof(SharedMem), args->nameOfMem);
 	else
 		shm->numeroDeBalcoesExecucao--;
 
