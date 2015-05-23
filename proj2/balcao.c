@@ -302,7 +302,7 @@ void *thr_balcao(void *arg)
 	while (elapsedTime < args->openingTime)		
 	{
 		char str[MAX_NUMBER_LINE];
-		if (readlineBlock(fd, str))
+		if (readline(fd, str))
 		{
 			//--------------------ABRE/FECHA FIFO DO CLIENTE E ENVIA INFO----------
 			args2_struct *toSend = malloc(sizeof(args2_struct));
