@@ -257,18 +257,6 @@ void *thr_balcao(void *arg)
 
 	printf("\nEntrou na thread do balcao\n");
 
-	//-------------------CRIA E ABRE O FIFO DO BALCAO---------
-	char fifoName[MAX_NUMBER_LINE] = "/tmp/fb_";
-	char pid[MAX_NUMBER_LINE];
-	sprintf(pid, "%d", getpid());
-	strcat(fifoName, pid);
-	mkfifo(fifoName, 0660);
-
-	int fd = open(fifoName, O_RDONLY | O_NONBLOCK);
-
-	if (fd == -1)
-		perror("open()");
-	//-------------------------------------------------------
 	SharedMem * shm;
 	shm = createSharedMemory(args->nameOfMem, sizeof(SharedMem));
 
@@ -298,10 +286,23 @@ void *thr_balcao(void *arg)
 	pthread_t answer_thread[5000];
 	int threadCounter = 0;
 
+	//-------------------CRIA E ABRE O FIFO DO BALCAO---------
+	char fifoName[MAX_NUMBER_LINE] = "/tmp/fb_";
+	char pid[MAX_NUMBER_LINE];
+	sprintf(pid, "%d", getpid());
+	strcat(fifoName, pid);
+	mkfifo(fifoName, 0660);
+
+	int fd = open(fifoName, O_RDONLY);
+
+	if (fd == -1)
+		perror("open()");
+	//-------------------------------------------------------
+
 	while (elapsedTime < args->openingTime)		
 	{
 		char str[MAX_NUMBER_LINE];
-		if (readline(fd, str))
+		if (readlineBlock(fd, str))
 		{
 			//--------------------ABRE/FECHA FIFO DO CLIENTE E ENVIA INFO----------
 			args2_struct *toSend = malloc(sizeof(args2_struct));
