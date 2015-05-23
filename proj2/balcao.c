@@ -84,18 +84,17 @@ void initializeLogFile(SharedMem *shm)
 {
 	shm->logFile = fopen(shm->nameOfLog, "w");
 
-	fprintf(shm->logFile, " quando\t\t\t| quem\t\t| balcao\t| o_que\t\t\t\t| canal_criado/usado\n");
+	fprintf(shm->logFile, " quando\t\t\t\t\t| quem\t\t| balcao| o_que\t\t\t\t\t\t\t| canal_criado/usado\n");
 	fprintf(shm->logFile, "-------------------------------------------------------------------------------------------------------------\n");
 
 	fclose(shm->logFile);
 }
 
 void printOnLogPid(FILE * logFile, char * nameOfLog,char * who, int num, char * message, char * pid)
-{
-
+{	
 	logFile = fopen(nameOfLog, "a");
 	printTime(logFile);
-	fprintf(logFile, "%s\t| %d\t\t| %s\t| %s\n", who,num, message, pid);
+	fprintf(logFile, "%s\t| %d\t\t| %s\t| %s\n", who,num+1, message, pid);
 	fclose(logFile);
 }
 
@@ -144,9 +143,7 @@ SharedMem * createSharedMemory(char* shm_name,int shm_size)
 
 		initializeLogFile(shm);
 		
-		char pid[MAX_NUMBER_LINE];
-		sprintf(pid, "fb_%d", getpid());
-		printOnLogPid(shm->logFile, shm->nameOfLog,"Balcao", 1, "inicia_mem_partilhada       ", pid);
+		printOnLogPid(shm->logFile, shm->nameOfLog,"Balcao", 0, "inicia_mem_partilhada       ", "-");
 
 		//Inicializa o mutex
 		pthread_mutex_init(&shm->mutexLock, NULL);
