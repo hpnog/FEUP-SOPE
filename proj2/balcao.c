@@ -76,15 +76,15 @@ void printTime(FILE * logFile)
     tm_info = localtime(&timer);
 
     strftime(buffer, 26, "%Y-%m-%d %H:%M:%S", tm_info);
-    fprintf(logFile, " %s", buffer);
-    fprintf(logFile, "\t| ");
+    fprintf(logFile, " %-24s", buffer);
+    fprintf(logFile, "| ");
 }
 
 void initializeLogFile(SharedMem *shm)
 {
 	shm->logFile = fopen(shm->nameOfLog, "w");
 
-	fprintf(shm->logFile, " quando\t\t\t| quem\t\t| balcao\t| o_que\t\t\t\t| canal_criado/usado\n");
+	fprintf(shm->logFile, " quando                  | quem      | balcao | o_que                        | canal_criado/usado\n");
 	fprintf(shm->logFile, "-------------------------------------------------------------------------------------------------------------\n");
 
 	fclose(shm->logFile);
@@ -94,7 +94,7 @@ void printOnLogPid(FILE * logFile, char * nameOfLog,char * who, int num, char * 
 {	
 	logFile = fopen(nameOfLog, "a");
 	printTime(logFile);
-	fprintf(logFile, "%s\t| %d\t\t| %s\t| %s\n", who,num+1, message, pid);
+	fprintf(logFile, " %-9s| %-7d| %-29s| %-17s\n", who,num+1, message, pid);
 	fclose(logFile);
 }
 
@@ -181,7 +181,7 @@ void destroySharedMemory(SharedMem *shm, int nBalcao, int shm_size, char * shm_n
 
 	char pidN[MAX_NUMBER_LINE];
 	sprintf(pidN,"fb_%d", getpid());
-	printOnLogPid(shm->logFile, shm->nameOfLog,"Balcao", nBalcao, "fecha_loja\t\t", pidN);
+	printOnLogPid(shm->logFile, shm->nameOfLog,"Balcao", nBalcao, "fecha_loja", pidN);
 
 	if (munmap(shm,shm_size) < 0)
 	{
@@ -353,7 +353,7 @@ void *thr_balcao(void *arg)
 
 	char pidW2[MAX_NUMBER_LINE];
 	sprintf(pidW2, "fb_%d", getpid());
-	printOnLogPid(shm->logFile, shm->nameOfLog, "Balcao", nBalcao, "fecha_balcao\t\t", pidW2);
+	printOnLogPid(shm->logFile, shm->nameOfLog, "Balcao", nBalcao, "fecha_balcao", pidW2);
 	printf("\n\n\nTotal de clientes atendidos: %d", total);
 	printf("\nBalcao esteve aberto %d tempo\n", args->openingTime);
 	printf("\nNumero de balcoes em execucao: %d\n\n", shm->numeroDeBalcoesExecucao);

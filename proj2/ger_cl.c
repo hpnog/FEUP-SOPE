@@ -62,8 +62,8 @@ void printTime(FILE * logFile)
     tm_info = localtime(&timer);
 
     strftime(buffer, 26, "%Y-%m-%d %H:%M:%S", tm_info);
-    fprintf(logFile, " %s", buffer);
-    fprintf(logFile, "\t| ");
+    fprintf(logFile, " %-24s", buffer);
+    fprintf(logFile, "| ");
 }
 
 void printOnLog(SharedMem * shm,char * who, int num, char * message)
@@ -71,7 +71,7 @@ void printOnLog(SharedMem * shm,char * who, int num, char * message)
 
 	shm->logFile = fopen(shm->nameOfLog, "a");
 	printTime(shm->logFile);
-	fprintf(shm->logFile, "%s\t| %d\t\t| %s\t| fc_%d\n", who,num, message, getpid());
+	fprintf(shm->logFile, " %-9s| %-7d| %-29s| fc_%-14d\n", who,num, message, getpid());
 	fclose(shm->logFile);
 }
 
@@ -80,7 +80,7 @@ void printOnLogPid(SharedMem * shm,char * who, int num, char * message, int pid)
 
 	shm->logFile = fopen(shm->nameOfLog, "a");
 	printTime(shm->logFile);
-	fprintf(shm->logFile, "%s\t| %d\t\t| %s\t| fc_%d\n", who,num, message, pid);
+	fprintf(shm->logFile, " %-9s| %-7d| %-29s| fc_%-14d\n", who,num, message, pid);
 	fclose(shm->logFile);
 }
 //----------------------------------------CRIA MEMORIA PARTILHADA-------------------------------------------
@@ -220,7 +220,7 @@ int main(int argc, char *argv[])
 				printf("\nRead final message as follows: %s (Client %d)", endMessage, ii);
 				if(strcmp(endMessage,"fim_atendimento") == 0){
 					char end[MAX_NUMBER_LINE];
-					sprintf(end, "%s\t", endMessage);
+					sprintf(end, "%s", endMessage);
 					printOnLog(shm, "Cliente", numberOfDesk, end);
 					if (close(fd_cl) < 0)
 						perror("close()");
