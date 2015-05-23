@@ -220,7 +220,7 @@ int main(int argc, char *argv[])
 				printf("\nRead final message as follows: %s (Client %d)", endMessage, ii);
 				if(strcmp(endMessage,"fim_atendimento") == 0){
 					char end[MAX_NUMBER_LINE];
-					sprintf(end, "%s\t\t\t", endMessage);
+					sprintf(end, "%s\t", endMessage);
 					printOnLog(shm, "Cliente", numberOfDesk, end);
 					if (close(fd_cl) < 0)
 						perror("close()");

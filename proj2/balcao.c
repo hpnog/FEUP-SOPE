@@ -84,7 +84,7 @@ void initializeLogFile(SharedMem *shm)
 {
 	shm->logFile = fopen(shm->nameOfLog, "w");
 
-	fprintf(shm->logFile, " quando\t\t\t\t\t| quem\t\t| balcao| o_que\t\t\t\t\t\t\t| canal_criado/usado\n");
+	fprintf(shm->logFile, " quando\t\t\t| quem\t\t| balcao\t| o_que\t\t\t\t| canal_criado/usado\n");
 	fprintf(shm->logFile, "-------------------------------------------------------------------------------------------------------------\n");
 
 	fclose(shm->logFile);
@@ -181,7 +181,7 @@ void destroySharedMemory(SharedMem *shm, int nBalcao, int shm_size, char * shm_n
 
 	char pidN[MAX_NUMBER_LINE];
 	sprintf(pidN,"fb_%d", getpid());
-	printOnLogPid(shm->logFile, shm->nameOfLog,"Balcao", nBalcao, "fecha_loja\t\t\t\t", pidN);
+	printOnLogPid(shm->logFile, shm->nameOfLog,"Balcao", nBalcao, "fecha_loja\t\t", pidN);
 
 	if (munmap(shm,shm_size) < 0)
 	{
@@ -229,17 +229,17 @@ void *thr_atendimento(void *arg)
 
 	int messagelen = strlen(endMessage)+1;
 
-	char * pathT = malloc(sizeof(char) * MAX_NUMBER_LINE);
-	strcpy(pathT, args->pathToFifo);
-	pathT += 5;
-	printOnLogPid(args->shm->logFile, args->shm->nameOfLog,"Balcao", args->nBalcao, "fim_atendimento_cliente\t", pathT);
-	pathT -= 5;
-	free(pathT);
 
 	if (write(fifo_cl_int, endMessage,messagelen) < 0)
 		perror("write()");
 	else
 	{
+		char * pathT = malloc(sizeof(char) * MAX_NUMBER_LINE);
+		strcpy(pathT, args->pathToFifo);
+		pathT += 5;
+		printOnLogPid(args->shm->logFile, args->shm->nameOfLog,"Balcao", args->nBalcao, "fim_atendimento_cliente", pathT);
+		pathT -= 5;
+		free(pathT);
 		printf("\nSent final message to %s", args->pathToFifo);
 			
 	}
@@ -353,7 +353,7 @@ void *thr_balcao(void *arg)
 
 	char pidW2[MAX_NUMBER_LINE];
 	sprintf(pidW2, "fb_%d", getpid());
-	printOnLogPid(shm->logFile, shm->nameOfLog, "Balcao", nBalcao, "fecha_balcao\t\t\t\t", pidW2);
+	printOnLogPid(shm->logFile, shm->nameOfLog, "Balcao", nBalcao, "fecha_balcao\t\t", pidW2);
 	printf("\n\n\nTotal de clientes atendidos: %d", total);
 	printf("\nBalcao esteve aberto %d tempo\n", args->openingTime);
 	printf("\nNumero de balcoes em execucao: %d\n\n", shm->numeroDeBalcoesExecucao);
