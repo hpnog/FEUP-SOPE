@@ -170,7 +170,7 @@ SharedMem * createSharedMemory(char* shm_name,int shm_size)
 void destroySharedMemory(SharedMem *shm, int nBalcao, int shm_size, char * shm_name)
 {
 	printf("\n\nTabela:\n\n");
-	printf("N_B\t\tT\t\tDUR\t\tFIFO\t\tEM_AT\t\tJA_AT\t\tTMED\n");
+	printf("N_B\tT\tDUR\tFIFO\tEM_AT\tJA_AT\tTMED\n");
 	int i = 0;
 	while (i < shm->numeroDeBalcoes)
 	{
