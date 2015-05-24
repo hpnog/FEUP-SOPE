@@ -311,6 +311,8 @@ void *thr_balcao(void *arg)
 	mkfifo(fifoName, 0660);
 
 	int fd = open(fifoName, O_RDONLY | O_NONBLOCK);
+	if (fd == -1)
+		perror("open()");
 
 	args3_struct * send = malloc(sizeof(args3_struct));
 	send->dur = args->openingTime;
@@ -318,8 +320,6 @@ void *thr_balcao(void *arg)
 	pthread_t fifoOpener;
 	pthread_create(&fifoOpener, NULL, thr_fifoOpener, (void*) send);
 
-	if (fd == -1)
-		perror("open()");
 	//-------------------------------------------------------
 
 	while (elapsedTime < args->openingTime)		
