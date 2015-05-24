@@ -3,7 +3,6 @@
 #include <unistd.h> 
 #include <fcntl.h> 
 #include <pthread.h> 
-#include <semaphore.h> 
 #include <sys/mman.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -55,6 +54,13 @@ typedef struct
 	int nBalcao;
 
 } args2_struct;
+
+typedef struct
+{
+	int dur;
+	char pathToFifo[MAX_NUMBER_LINE];
+
+} args3_struct;
 
 //----------------------------------------LER DO FIFO---------------------------------------------
 int readline(int fd, char *str) 
@@ -168,13 +174,13 @@ void destroySharedMemory(SharedMem *shm, int nBalcao, int shm_size, char * shm_n
 	int i = 0;
 	while (i < shm->numeroDeBalcoes)
 	{
-		printf("%f\t%f\t%f\t%f\t%f\t%f\t%f\n", 
-			shm->table[N_BALCAO][i],
-			shm->table[N_TEMPO][i],
-			shm->table[N_DURACAO][i],
-			shm->table[N_FIFO][i],
-			shm->table[N_EM_ATENDIMENTO][i],
-			shm->table[N_JA_ATENDIDOS][i],
+		printf("%d\t%d\t%d\t%d\t%d\t%d\t%f\n", 
+			(int) shm->table[N_BALCAO][i],
+			(int) shm->table[N_TEMPO][i],
+			(int) shm->table[N_DURACAO][i],
+			(int) shm->table[N_FIFO][i],
+			(int) shm->table[N_EM_ATENDIMENTO][i],
+			(int) shm->table[N_JA_ATENDIDOS][i],
 			shm->table[TEMPO_MEDIO_ATENDIMENTO][i]);
 		i++;
 	}
@@ -196,6 +202,17 @@ void destroySharedMemory(SharedMem *shm, int nBalcao, int shm_size, char * shm_n
 	}
 } 
 //--------------------------------------------------------------------------------------------------
+void *thr_fifoOpener(void * arg)
+{
+	args3_struct *args = (args3_struct*) arg;
+	int fifo = open(args->pathToFifo, O_WRONLY | O_NONBLOCK);
+	sleep(args->dur);
+	printf("\nTempo de abertura passou");
+	close(fifo);
+	free(arg);
+	pthread_exit(NULL);
+}
+
 
 void *thr_atendimento(void *arg)
 {
@@ -293,7 +310,13 @@ void *thr_balcao(void *arg)
 	strcat(fifoName, pid);
 	mkfifo(fifoName, 0660);
 
-	int fd = open(fifoName, O_RDONLY);
+	int fd = open(fifoName, O_RDONLY | O_NONBLOCK);
+
+	args3_struct * send = malloc(sizeof(args3_struct));
+	send->dur = args->openingTime;
+	strcpy(send->pathToFifo, fifoName);
+	pthread_t fifoOpener;
+	pthread_create(&fifoOpener, NULL, thr_fifoOpener, (void*) send);
 
 	if (fd == -1)
 		perror("open()");
@@ -338,6 +361,8 @@ void *thr_balcao(void *arg)
 		printf("\nJoin: %d", (j + 1));
 		j++;
 	}
+	if (pthread_join(fifoOpener, NULL) != 0) perror("pthread_join()");
+
 	printf("\nThread Counter: %d", threadCounter);
 
 	shm->table[N_DURACAO][nBalcao] = args->openingTime;
